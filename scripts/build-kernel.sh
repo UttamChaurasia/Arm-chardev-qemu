@@ -15,5 +15,5 @@ export ARCH=arm CROSS_COMPILE=arm-linux-gnueabi-
 make allnoconfig
 ./scripts/kconfig/merge_config.sh -m .config "$ROOT/kernel/mychardev.config"
 make olddefconfig
-make -j"$(nproc)" zImage modules_prepare vmlinux usr/gen_init_cpio
+make -j"$(nproc)" zImage vmlinux usr/gen_init_cpio modules   # "modules" yields Module.symvers, needed by out-of-tree builds
 echo "kernel ready: $(pwd)/arch/arm/boot/zImage"
