@@ -1,0 +1,12 @@
+# build products
+build/
+*.o
+*.ko
+*.mod
+*.mod.c
+.*.cmd
+.tmp_versions/
+Module.symvers
+modules.order
+# large prebuilt images: distribute as a GitHub Release asset, not in git
+prebuilt/
