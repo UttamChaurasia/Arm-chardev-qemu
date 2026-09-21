@@ -1,50 +1,39 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * chardev_main.c - Phase 1: a minimal character device.
+ * chardev_main.c - module init/exit and the character device itself.
  *
- *   module_init -> alloc_chrdev_region -> cdev_add -> class_create
- *               -> device_create   (udev/devtmpfs then creates /dev/mychardev)
- *
- * The 4 KiB kernel buffer is kmalloc'd; all data crosses the user/kernel
- * boundary with copy_to_user / copy_from_user, never by direct pointer use.
+ * The device is created either by the platform driver's probe() (when the
+ * Device Tree contains a matching node) or, as a fallback, directly from
+ * module init so the driver is usable on a kernel with no DT node.
  */
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/fs.h>
-#include <linux/cdev.h>
-#include <linux/device.h>
-#include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
+#include <linux/err.h>
 
+#include "chardev.h"
 #include "../include/mychardev_ioctl.h"
 
-#define DEV_NAME  "mychardev"
-#define BUF_SIZE  4096
+static struct mychar_dev *fallback_dev;
 
-struct mychar_dev {
-	struct cdev cdev;
-	dev_t devt;
-	struct class *class;
-	struct mutex lock;      /* protects buf and len */
-	char *buf;
-	size_t len;             /* valid bytes in buf */
-};
-
-static struct mychar_dev mydev;
-
-/* ---------------- file_operations ---------------- */
+/* ------------------------------------------------------------------ */
+/* file_operations                                                     */
+/* ------------------------------------------------------------------ */
 
 static int mychar_open(struct inode *inode, struct file *filp)
 {
-	filp->private_data = container_of(inode->i_cdev, struct mychar_dev, cdev);
-	pr_info("%s: open (pid %d)\n", DEV_NAME, current->pid);
+	struct mychar_dev *md = container_of(inode->i_cdev, struct mychar_dev, cdev);
+
+	filp->private_data = md;
+	pr_info("%s: open (pid %d)\n", MYCHAR_NAME, current->pid);
 	return 0;
 }
 
 static int mychar_release(struct inode *inode, struct file *filp)
 {
-	pr_info("%s: release\n", DEV_NAME);
+	pr_info("%s: release\n", MYCHAR_NAME);
 	return 0;
 }
 
@@ -57,8 +46,8 @@ static ssize_t mychar_read(struct file *filp, char __user *ubuf,
 	if (mutex_lock_interruptible(&md->lock))
 		return -ERESTARTSYS;
 
-	if (*ppos >= md->len) {                 /* EOF */
-		ret = 0;
+	if (*ppos >= md->len) {
+		ret = 0;                       /* EOF */
 		goto out;
 	}
 	if (count > md->len - *ppos)
@@ -76,9 +65,10 @@ out:
 }
 
 /*
- * Data lands at *ppos and the valid length becomes *ppos + count
- * ("last write wins"): `echo hi > /dev/mychardev` replaces the contents,
- * repeated write()s on one descriptor append.
+ * Semantics: data is written at *ppos and the valid length becomes
+ * *ppos + count ("last write wins"). So `echo hi > /dev/mychardev`
+ * (fresh open, offset 0) replaces the contents, while repeated write()s
+ * on one open descriptor append.
  */
 static ssize_t mychar_write(struct file *filp, const char __user *ubuf,
 			    size_t count, loff_t *ppos)
@@ -86,10 +76,10 @@ static ssize_t mychar_write(struct file *filp, const char __user *ubuf,
 	struct mychar_dev *md = filp->private_data;
 	ssize_t ret;
 
-	if (*ppos >= BUF_SIZE)
+	if (*ppos >= md->cap)
 		return -ENOSPC;
-	if (count > BUF_SIZE - *ppos)
-		count = BUF_SIZE - *ppos;       /* short write */
+	if (count > md->cap - *ppos)
+		count = md->cap - *ppos;      /* short write */
 
 	if (mutex_lock_interruptible(&md->lock))
 		return -ERESTARTSYS;
@@ -118,17 +108,27 @@ static long mychar_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case MYCHAR_IOC_RESET:
 		mutex_lock(&md->lock);
 		md->len = 0;
-		memset(md->buf, 0, BUF_SIZE);
+		memset(md->buf, 0, md->cap);
 		mutex_unlock(&md->lock);
 		return 0;
+
 	case MYCHAR_IOC_GET_LEN:
 		mutex_lock(&md->lock);
 		val = md->len;
 		mutex_unlock(&md->lock);
 		break;
+
 	case MYCHAR_IOC_GET_CAP:
-		val = BUF_SIZE;
+		val = md->cap;
 		break;
+
+	case MYCHAR_IOC_GET_IRQCNT:
+		val = atomic_read(&md->irq_count);
+		break;
+
+	case MYCHAR_IOC_TRIGGER_IRQ:
+		return mychar_irq_trigger(md);
+
 	default:
 		return -ENOTTY;
 	}
@@ -145,65 +145,117 @@ static const struct file_operations mychar_fops = {
 	.llseek         = default_llseek,
 };
 
-/* ---------------- module init / exit ---------------- */
+/* ------------------------------------------------------------------ */
+/* create / destroy (used by probe() and by the fallback path)          */
+/* ------------------------------------------------------------------ */
 
-static int __init mychar_init(void)
+struct mychar_dev *mychar_create(size_t cap, struct device *parent)
 {
-	struct device *dev;
+	struct mychar_dev *md;
 	int ret;
 
-	pr_info("%s: init\n", DEV_NAME);
+	if (cap == 0 || cap > MYCHAR_MAX_SIZE)
+		return ERR_PTR(-EINVAL);
 
-	mydev.buf = kzalloc(BUF_SIZE, GFP_KERNEL);
-	if (!mydev.buf)
-		return -ENOMEM;
-	mutex_init(&mydev.lock);
+	md = kzalloc(sizeof(*md), GFP_KERNEL);
+	if (!md)
+		return ERR_PTR(-ENOMEM);
 
-	ret = alloc_chrdev_region(&mydev.devt, 0, 1, DEV_NAME);
+	md->buf = kmalloc(cap, GFP_KERNEL);
+	if (!md->buf) {
+		ret = -ENOMEM;
+		goto err_md;
+	}
+	memset(md->buf, 0, cap);
+	md->cap = cap;
+	mutex_init(&md->lock);
+	atomic_set(&md->irq_count, 0);
+
+	ret = alloc_chrdev_region(&md->devt, 0, 1, MYCHAR_NAME);
 	if (ret)
 		goto err_buf;
 
-	cdev_init(&mydev.cdev, &mychar_fops);
-	mydev.cdev.owner = THIS_MODULE;
-	ret = cdev_add(&mydev.cdev, mydev.devt, 1);
+	cdev_init(&md->cdev, &mychar_fops);
+	md->cdev.owner = THIS_MODULE;
+	ret = cdev_add(&md->cdev, md->devt, 1);
 	if (ret)
 		goto err_region;
 
-	mydev.class = class_create(DEV_NAME);
-	if (IS_ERR(mydev.class)) {
-		ret = PTR_ERR(mydev.class);
+	md->class = class_create(MYCHAR_NAME);
+	if (IS_ERR(md->class)) {
+		ret = PTR_ERR(md->class);
 		goto err_cdev;
 	}
 
-	dev = device_create(mydev.class, NULL, mydev.devt, NULL, DEV_NAME);
-	if (IS_ERR(dev)) {
-		ret = PTR_ERR(dev);
+	md->device = device_create(md->class, parent, md->devt, NULL, MYCHAR_NAME);
+	if (IS_ERR(md->device)) {
+		ret = PTR_ERR(md->device);
 		goto err_class;
 	}
 
-	pr_info("%s: registered major=%d minor=%d\n", DEV_NAME,
-		MAJOR(mydev.devt), MINOR(mydev.devt));
-	return 0;
+	pr_info("%s: registered major=%d minor=%d, %zu-byte buffer\n",
+		MYCHAR_NAME, MAJOR(md->devt), MINOR(md->devt), cap);
+	return md;
 
 err_class:
-	class_destroy(mydev.class);
+	class_destroy(md->class);
 err_cdev:
-	cdev_del(&mydev.cdev);
+	cdev_del(&md->cdev);
 err_region:
-	unregister_chrdev_region(mydev.devt, 1);
+	unregister_chrdev_region(md->devt, 1);
 err_buf:
-	kfree(mydev.buf);
-	return ret;
+	kfree(md->buf);
+err_md:
+	kfree(md);
+	return ERR_PTR(ret);
+}
+
+void mychar_destroy(struct mychar_dev *md)
+{
+	if (!md)
+		return;
+	device_destroy(md->class, md->devt);
+	class_destroy(md->class);
+	cdev_del(&md->cdev);
+	unregister_chrdev_region(md->devt, 1);
+	kfree(md->buf);
+	kfree(md);
+	pr_info("%s: unregistered\n", MYCHAR_NAME);
+}
+
+/* ------------------------------------------------------------------ */
+/* module init / exit                                                  */
+/* ------------------------------------------------------------------ */
+
+static int __init mychar_init(void)
+{
+	int ret;
+
+	pr_info("%s: init\n", MYCHAR_NAME);
+
+	ret = mychar_platform_register();   /* probe() runs here if DT matches */
+	if (ret)
+		return ret;
+
+	if (!mychar_platform_probed()) {
+		pr_info("%s: no DT node found, creating device without IRQ\n",
+			MYCHAR_NAME);
+		fallback_dev = mychar_create(MYCHAR_DEFAULT_SIZE, NULL);
+		if (IS_ERR(fallback_dev)) {
+			ret = PTR_ERR(fallback_dev);
+			fallback_dev = NULL;
+			mychar_platform_unregister();
+			return ret;
+		}
+	}
+	return 0;
 }
 
 static void __exit mychar_exit(void)
 {
-	device_destroy(mydev.class, mydev.devt);
-	class_destroy(mydev.class);
-	cdev_del(&mydev.cdev);
-	unregister_chrdev_region(mydev.devt, 1);
-	kfree(mydev.buf);
-	pr_info("%s: exit\n", DEV_NAME);
+	mychar_destroy(fallback_dev);       /* NULL-safe */
+	mychar_platform_unregister();       /* remove() destroys the DT device */
+	pr_info("%s: exit\n", MYCHAR_NAME);
 }
 
 module_init(mychar_init);
@@ -211,4 +263,4 @@ module_exit(mychar_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Uttam");
-MODULE_DESCRIPTION("Character device driver demo, phase 1 (ARM/QEMU)");
+MODULE_DESCRIPTION("Character device driver demo (ARM/QEMU)");
