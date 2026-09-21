@@ -1,0 +1,16 @@
+/*
+ * Node inserted into QEMU virt's device tree by scripts/make-dtb.sh.
+ *
+ * "interrupts" = <GIC_SPI 60 IRQ_TYPE_EDGE_RISING>. SPI 60 is unused by
+ * the virt machine (UART=1, RTC=2, PCIe=3-6, GPIO=7, virtio-mmio=16-47).
+ * The interrupt-parent is inherited from the root node.
+ *
+ * Note: this is a plain node merged into the *base* DTB, not a runtime
+ * overlay (.dtbo). QEMU's -dtb takes a complete tree and the kernel/
+ * bootloader here have no overlay-apply support.
+ */
+	mychardev {
+		compatible = "demo,mychardev";
+		demo,buffer-size = <4096>;
+		interrupts = <0 60 1>;
+	};
