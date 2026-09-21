@@ -7,8 +7,9 @@ ARCH          ?= arm
 CROSS_COMPILE ?= arm-linux-gnueabi-
 KDIR          ?= $(CURDIR)/../work/linux
 
-obj-m := chardev.o
+obj-m := chardev.o oops_demo.o
 chardev-objs := src/chardev_main.o src/chardev_dt.o src/chardev_irq.o
+oops_demo-objs := src/oops_demo.o
 # The module (chardev) must not share a name with a source file (chardev.c),
 # or kbuild sees the object as both a target and its own prerequisite.
 
