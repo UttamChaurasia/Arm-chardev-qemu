@@ -24,7 +24,6 @@ if [ ! -x "$BB/busybox" ]; then
     make -C "$BB" ARCH=arm CROSS_COMPILE=$CROSS -j"$(nproc)"
 fi
 
-${CROSS}gcc -static -O2 -Wall -o build/hello        user/hello.c
 ${CROSS}gcc -static -O2 -Wall -o build/chardev_test user/chardev_test.c
 
 # initramfs manifest for the kernel's gen_init_cpio (no root / mknod needed)
@@ -36,7 +35,6 @@ M=build/rootfs.list
   echo "file /bin/busybox $BB/busybox 755 0 0"
   echo "file /init rootfs/init 755 0 0"
   echo "file /bin/selftest.sh rootfs/selftest.sh 755 0 0"
-  echo "file /bin/hello build/hello 755 0 0"
   echo "file /bin/chardev_test build/chardev_test 755 0 0"
   echo "file /lib/modules/chardev.ko chardev.ko 644 0 0"
   for a in sh ash cat echo ls mount umount insmod rmmod lsmod dmesg grep mknod \

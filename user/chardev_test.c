@@ -1,5 +1,5 @@
 /*
- * chardev_test.c - user-space self-test for /dev/mychardev (Phase 1).
+ * chardev_test.c - user-space self-test for /dev/mychardev .
  * Exit status = number of failed checks.
  */
 #include <errno.h>
@@ -24,7 +24,7 @@ static int failures;
 int main(void)
 {
 	char buf[128], big[8192];
-	int fd, cap = 0, len = -1;
+	int fd, cap = 0, len = -1, c0 = 0, c1 = 0;
 	ssize_t n;
 
 	fd = open(DEV, O_RDWR);
@@ -75,6 +75,23 @@ int main(void)
 	errno = 0;
 	CHECK(ioctl(fd, _IO(MYCHAR_IOC_MAGIC, 99)) < 0 && errno == ENOTTY,
 	      "unknown ioctl -> ENOTTY");
+
+	/* interrupt path (needs the Device Tree node) */
+	ioctl(fd, MYCHAR_IOC_GET_IRQCNT, &c0);
+	errno = 0;
+	if (ioctl(fd, MYCHAR_IOC_TRIGGER_IRQ) < 0 && errno == ENODEV) {
+		printf("[ SKIP ] no IRQ wired up (no DT node)\n");
+	} else {
+		usleep(100000);
+		ioctl(fd, MYCHAR_IOC_GET_IRQCNT, &c1);
+		CHECK(c1 == c0 + 1, "software-raised IRQ reached the handler");
+		ioctl(fd, MYCHAR_IOC_TRIGGER_IRQ);
+		ioctl(fd, MYCHAR_IOC_TRIGGER_IRQ);
+		usleep(100000);
+		ioctl(fd, MYCHAR_IOC_GET_IRQCNT, &c1);
+		CHECK(c1 >= c0 + 2, "further IRQs are counted");
+		printf("       irq count = %d\n", c1);
+	}
 
 	close(fd);
 	printf("== %s (%d failure%s) ==\n", failures ? "FAILED" : "ALL PASSED",
