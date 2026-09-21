@@ -1,0 +1,32 @@
+== PC: oopsdemo_write_null+0x14 in module oops_demo
+   Line 15 of "/home/claude/kernel-chardev-driver-final/src/oops_demo.c" starts at address 0xe <oopsdemo_write_null+14> and ends at 0x16 <oopsdemo_write_null+22>.
+   0x14 is in oopsdemo_write_null (/home/claude/kernel-chardev-driver-final/src/oops_demo.c:15).
+   10	static noinline void oopsdemo_write_null(void)
+   11	{
+   12		volatile int *p = NULL;
+   13	
+   14		pr_info("oops_demo: about to dereference NULL\n");
+   15		*p = 0xdead;                     /* <-- the faulting line */
+   16	}
+   17	
+   18	static int __init oopsdemo_init(void)
+   19	{
+== LR: oopsdemo_write_null+0xf in module oops_demo
+   Line 15 of "/home/claude/kernel-chardev-driver-final/src/oops_demo.c" starts at address 0xe <oopsdemo_write_null+14> and ends at 0x16 <oopsdemo_write_null+22>.
+   0xf is in oopsdemo_write_null (/home/claude/kernel-chardev-driver-final/src/oops_demo.c:15).
+   10	static noinline void oopsdemo_write_null(void)
+   11	{
+   12		volatile int *p = NULL;
+   13	
+   14		pr_info("oops_demo: about to dereference NULL\n");
+   15		*p = 0xdead;                     /* <-- the faulting line */
+   16	}
+   17	
+   18	static int __init oopsdemo_init(void)
+   19	{
+== call trace (innermost first)
+    oopsdemo_write_null [oops_demo] from oopsdemo_init+0x7/0x1000 [oops_demo]
+    oopsdemo_init [oops_demo] from do_one_initcall+0x37/0x1a0
+    do_one_initcall from do_init_module+0x3d/0x150
+    do_init_module from sys_init_module+0xd9/0xf0
+    sys_init_module from ret_fast_syscall+0x1/0x5c
