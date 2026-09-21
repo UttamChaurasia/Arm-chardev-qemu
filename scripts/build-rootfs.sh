@@ -37,7 +37,9 @@ M=build/rootfs.list
   echo "file /bin/selftest.sh rootfs/selftest.sh 755 0 0"
   echo "file /bin/chardev_test build/chardev_test 755 0 0"
   echo "file /lib/modules/chardev.ko chardev.ko 644 0 0"
-  for a in sh ash cat echo ls mount umount insmod rmmod lsmod dmesg grep mknod \
+  echo "file /lib/modules/oops_demo.ko oops_demo.ko 644 0 0"
+  echo "file /bin/gdbdemo.sh rootfs/gdbdemo.sh 755 0 0"
+  for a in sh ash cat echo ls sleep mount umount insmod rmmod lsmod dmesg grep mknod \
            poweroff reboot sleep setsid cttyhack uname mkdir cp rm vi head tail; do
       echo "slink /bin/$a busybox 777 0 0"
   done

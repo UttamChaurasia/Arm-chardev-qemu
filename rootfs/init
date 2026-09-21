@@ -8,6 +8,12 @@ mount -t devtmpfs none /dev
 echo
 echo "=== mychardev ARM/QEMU environment ($(uname -srm)) ==="
 
+if grep -q gdb /proc/cmdline; then
+    /bin/gdbdemo.sh
+    echo "=== gdbdemo finished, powering off ==="
+    poweroff -f
+fi
+
 if grep -q autotest /proc/cmdline; then
     /bin/selftest.sh
     echo "=== selftest finished, powering off ==="
@@ -21,6 +27,7 @@ Try:
   echo hello > /dev/mychardev ; cat /dev/mychardev
   chardev_test
   rmmod chardev
+  insmod /lib/modules/oops_demo.ko    # deliberate kernel oops (see docs/DEBUGGING.md)
 Power off:  poweroff -f
 MSG
 exec setsid cttyhack sh

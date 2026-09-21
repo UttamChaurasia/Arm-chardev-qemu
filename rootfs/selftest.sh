@@ -32,3 +32,8 @@ done
 echo "stress OK ($i cycles)"
 echo 7 > /proc/sys/kernel/printk
 echo "kernel error lines in dmesg: $(dmesg | grep -ciE 'oops|BUG:|WARNING|leak')"
+if grep -q oopsdemo /proc/cmdline; then
+    echo "--- 10. deliberate kernel oops (oops_demo.ko)"
+    insmod /lib/modules/oops_demo.ko
+    echo "insmod exit status: $? (killed by the fault)"
+fi
