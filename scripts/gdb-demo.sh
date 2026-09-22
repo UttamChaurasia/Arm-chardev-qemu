@@ -14,8 +14,9 @@ if [ ! -f "$VMLINUX" ]; then
 fi
 KO=chardev.ko; [ -f "$KO" ] || KO=prebuilt/chardev.ko
 mkdir -p build
-# Debug info in the prebuilt .ko embeds the path it was built in; map it to this checkout.
-BUILT_AT=/home/claude/kernel-chardev-driver-final
+. scripts/paths.sh
+# The module's debug info embeds the absolute path it was built in; map it to this checkout.
+BUILT_AT=$(built_at "$KO")
 
 # Breakpoint lines are looked up from markers in the source, so edits to
 # src/chardev_main.c cannot silently leave the script pointing at the wrong lines.

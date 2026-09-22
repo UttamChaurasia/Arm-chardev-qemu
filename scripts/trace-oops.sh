@@ -8,7 +8,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 LOG=${1:?usage: trace-oops.sh <oops-log> [module.ko]}
 GDB=${GDB:-gdb-multiarch}
-BUILT_AT=/home/claude/kernel-chardev-driver-final   # path embedded in the prebuilt .ko debug info
+. scripts/paths.sh
 
 resolve() {   # $1 = "PC" | "LR"
     local line sym off mod ko
@@ -24,7 +24,7 @@ resolve() {   # $1 = "PC" | "LR"
     fi
     ko=${2:-${mod}.ko}
     [ -f "$ko" ] || ko=prebuilt/${mod}.ko
-    $GDB -q -batch -ex "set substitute-path $BUILT_AT $(pwd)" -ex "info line *($sym+0x$off)" -ex "list *($sym+0x$off)" "$ko" 2>&1 \
+    $GDB -q -batch -ex "set substitute-path $(built_at "$ko") $(pwd)" -ex "info line *($sym+0x$off)" -ex "list *($sym+0x$off)" "$ko" 2>&1 \
         | grep -v "^warning\|^Reading symbols\|^$" | sed 's/^/   /'
 }
 
