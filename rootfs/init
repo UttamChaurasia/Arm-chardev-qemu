@@ -22,7 +22,6 @@ fi
 
 cat <<'MSG'
 Try:
-  hello
   insmod /lib/modules/chardev.ko ; dmesg | tail
   echo hello > /dev/mychardev ; cat /dev/mychardev
   chardev_test
