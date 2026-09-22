@@ -135,6 +135,23 @@ static long mychar_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	return put_user(val, (int __user *)arg);
 }
 
+/*
+ * SEEK_SET/CUR are bounded by the buffer capacity; SEEK_END is relative to the
+ * number of valid bytes, not the (zero) inode size, so lseek(fd, -n, SEEK_END)
+ * addresses the tail of the stored data.
+ */
+static loff_t mychar_llseek(struct file *filp, loff_t off, int whence)
+{
+	struct mychar_dev *md = filp->private_data;
+	loff_t eof;
+
+	mutex_lock(&md->lock);
+	eof = md->len;
+	mutex_unlock(&md->lock);
+
+	return generic_file_llseek_size(filp, off, whence, md->cap, eof);
+}
+
 static const struct file_operations mychar_fops = {
 	.owner          = THIS_MODULE,
 	.open           = mychar_open,
@@ -142,7 +159,7 @@ static const struct file_operations mychar_fops = {
 	.read           = mychar_read,
 	.write          = mychar_write,
 	.unlocked_ioctl = mychar_ioctl,
-	.llseek         = default_llseek,
+	.llseek         = mychar_llseek,
 };
 
 /* ------------------------------------------------------------------ */

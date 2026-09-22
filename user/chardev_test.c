@@ -72,6 +72,19 @@ int main(void)
 	ioctl(fd, MYCHAR_IOC_GET_LEN, &len);
 	CHECK(len == 0, "ioctl RESET empties buffer");
 
+	/* lseek: SEEK_END is relative to the stored length */
+	lseek(fd, 0, SEEK_SET);
+	write(fd, "hello", 5);
+	CHECK(lseek(fd, 0, SEEK_END) == 5, "lseek(0, SEEK_END) == stored length");
+	CHECK(lseek(fd, -2, SEEK_END) == 3, "lseek(-2, SEEK_END) == 3");
+	memset(buf, 0, sizeof(buf));
+	n = read(fd, buf, 2);
+	CHECK(n == 2 && memcmp(buf, "lo", 2) == 0, "read after SEEK_END-2 returns tail \"lo\"");
+	errno = 0;
+	CHECK(lseek(fd, cap + 1, SEEK_SET) < 0 && errno == EINVAL,
+	      "lseek beyond capacity -> EINVAL");
+	ioctl(fd, MYCHAR_IOC_RESET);
+
 	errno = 0;
 	CHECK(ioctl(fd, _IO(MYCHAR_IOC_MAGIC, 99)) < 0 && errno == ENOTTY,
 	      "unknown ioctl -> ENOTTY");
