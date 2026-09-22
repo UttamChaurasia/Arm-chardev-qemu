@@ -1,0 +1,10 @@
+# Shell scripts and the initramfs init run inside Linux: force LF endings so a
+# checkout or unzip on Windows cannot break them with CRLF ("bad interpreter").
+*.sh      text eol=lf
+rootfs/*  text eol=lf
+*.gdb     text eol=lf
+*.c       text eol=lf
+*.h       text eol=lf
+Makefile  text eol=lf
+*.dtsi    text eol=lf
+*.dts     text eol=lf
