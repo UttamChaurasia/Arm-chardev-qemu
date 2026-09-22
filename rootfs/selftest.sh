@@ -16,6 +16,7 @@ echo "--- 6. C test program (fops, ioctl, IRQ)"
 chardev_test
 echo "--- 7. interrupt statistics"
 grep -E "CPU|mychardev" /proc/interrupts
+cat /sys/class/mychardev/mychardev/stats
 echo "--- 8. rmmod"
 rmmod chardev && echo "rmmod OK"
 grep mychardev /proc/interrupts || echo "(IRQ released)"

@@ -106,6 +106,26 @@ int main(void)
 		printf("       irq count = %d\n", c1);
 	}
 
+	/* driver-side statistics must agree with what user space did */
+	{
+		long long opens = 0, reads = 0, writes = 0, br = 0, bw = 0;
+		int irqs = -1, now = -1;
+		FILE *f = fopen("/sys/class/mychardev/mychardev/stats", "r");
+
+		CHECK(f != NULL, "sysfs stats file exists");
+		if (f) {
+			int got = fscanf(f, "opens=%lld reads=%lld writes=%lld bytes_read=%lld bytes_written=%lld irqs=%d",
+					 &opens, &reads, &writes, &br, &bw, &irqs);
+			fclose(f);
+			ioctl(fd, MYCHAR_IOC_GET_IRQCNT, &now);
+			CHECK(got == 6, "sysfs stats parses (6 fields)");
+			CHECK(opens >= 1 && writes >= 1 && reads >= 1,
+			      "stats count opens, reads and writes");
+			CHECK(bw >= 5 && br >= 5, "stats count bytes transferred");
+			CHECK(irqs == now, "stats irq count equals ioctl GET_IRQCNT");
+		}
+	}
+
 	close(fd);
 	printf("== %s (%d failure%s) ==\n", failures ? "FAILED" : "ALL PASSED",
 	       failures, failures == 1 ? "" : "s");

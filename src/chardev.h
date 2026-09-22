@@ -25,6 +25,13 @@ struct mychar_dev {
 
 	int irq;                /* 0 when no interrupt is wired up */
 	atomic_t irq_count;
+
+	/* statistics exported through sysfs (stats attribute) */
+	atomic64_t opens;
+	atomic64_t reads;
+	atomic64_t writes;
+	atomic64_t bytes_read;
+	atomic64_t bytes_written;
 };
 
 /* chardev_main.c */

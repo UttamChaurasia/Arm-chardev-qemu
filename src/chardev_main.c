@@ -37,6 +37,7 @@ static int mychar_open(struct inode *inode, struct file *filp)
 	struct mychar_dev *md = container_of(inode->i_cdev, struct mychar_dev, cdev);
 
 	filp->private_data = md;
+	atomic64_inc(&md->opens);
 	pr_info("%s: open (pid %d)\n", MYCHAR_NAME, current->pid);
 	return 0;
 }
@@ -68,6 +69,8 @@ static ssize_t mychar_read(struct file *filp, char __user *ubuf,
 		goto out;
 	}
 	*ppos += count;
+	atomic64_inc(&md->reads);
+	atomic64_add(count, &md->bytes_read);
 	ret = count;
 out:
 	mutex_unlock(&md->lock);
@@ -100,6 +103,8 @@ static ssize_t mychar_write(struct file *filp, const char __user *ubuf,
 	}
 	*ppos += count;
 	md->len = *ppos;
+	atomic64_inc(&md->writes);
+	atomic64_add(count, &md->bytes_written);
 	ret = count;
 out:
 	mutex_unlock(&md->lock);
@@ -173,6 +178,29 @@ static const struct file_operations mychar_fops = {
 };
 
 /* ------------------------------------------------------------------ */
+/* sysfs: /sys/class/mychardev/mychardev/stats                         */
+/* ------------------------------------------------------------------ */
+
+static ssize_t stats_show(struct device *dev, struct device_attribute *attr,
+			  char *buf)
+{
+	struct mychar_dev *md = dev_get_drvdata(dev);
+	size_t len;
+
+	mutex_lock(&md->lock);
+	len = md->len;
+	mutex_unlock(&md->lock);
+
+	return sysfs_emit(buf,
+		"opens=%lld reads=%lld writes=%lld bytes_read=%lld bytes_written=%lld irqs=%d len=%zu cap=%zu\n",
+		atomic64_read(&md->opens), atomic64_read(&md->reads),
+		atomic64_read(&md->writes), atomic64_read(&md->bytes_read),
+		atomic64_read(&md->bytes_written), atomic_read(&md->irq_count),
+		len, md->cap);
+}
+static DEVICE_ATTR_RO(stats);
+
+/* ------------------------------------------------------------------ */
 /* create / destroy (used by probe() and by the fallback path)          */
 /* ------------------------------------------------------------------ */
 
@@ -214,16 +242,22 @@ struct mychar_dev *mychar_create(size_t cap, struct device *parent)
 		goto err_cdev;
 	}
 
-	md->device = device_create(md->class, parent, md->devt, NULL, MYCHAR_NAME);
+	md->device = device_create(md->class, parent, md->devt, md, MYCHAR_NAME);
 	if (IS_ERR(md->device)) {
 		ret = PTR_ERR(md->device);
 		goto err_class;
 	}
 
+	ret = device_create_file(md->device, &dev_attr_stats);
+	if (ret)
+		goto err_device;
+
 	pr_info("%s: registered major=%d minor=%d, %zu-byte buffer\n",
 		MYCHAR_NAME, MAJOR(md->devt), MINOR(md->devt), cap);
 	return md;
 
+err_device:
+	device_destroy(md->class, md->devt);
 err_class:
 	class_destroy(md->class);
 err_cdev:
@@ -241,6 +275,7 @@ void mychar_destroy(struct mychar_dev *md)
 {
 	if (!md)
 		return;
+	device_remove_file(md->device, &dev_attr_stats);
 	device_destroy(md->class, md->devt);
 	class_destroy(md->class);
 	cdev_del(&md->cdev);
