@@ -18,6 +18,16 @@
 
 static struct mychar_dev *fallback_dev;
 
+/*
+ * Used only when no Device Tree node is present; a DT node's
+ * demo,buffer-size property takes precedence.
+ */
+static unsigned int buffer_size = MYCHAR_DEFAULT_SIZE;
+module_param(buffer_size, uint, 0444);
+MODULE_PARM_DESC(buffer_size, "Buffer size in bytes when no DT node is present (1.."
+		 __stringify(MYCHAR_MAX_SIZE) ", default "
+		 __stringify(MYCHAR_DEFAULT_SIZE) ")");
+
 /* ------------------------------------------------------------------ */
 /* file_operations                                                     */
 /* ------------------------------------------------------------------ */
@@ -255,9 +265,9 @@ static int __init mychar_init(void)
 		return ret;
 
 	if (!mychar_platform_probed()) {
-		pr_info("%s: no DT node found, creating device without IRQ\n",
-			MYCHAR_NAME);
-		fallback_dev = mychar_create(MYCHAR_DEFAULT_SIZE, NULL);
+		pr_info("%s: no DT node found, creating %u-byte device without IRQ\n",
+			MYCHAR_NAME, buffer_size);
+		fallback_dev = mychar_create(buffer_size, NULL);
 		if (IS_ERR(fallback_dev)) {
 			ret = PTR_ERR(fallback_dev);
 			fallback_dev = NULL;

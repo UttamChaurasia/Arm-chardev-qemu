@@ -32,8 +32,24 @@ done
 echo "stress OK ($i cycles)"
 echo 7 > /proc/sys/kernel/printk
 echo "kernel fault signatures in dmesg: $(dmesg | grep -cE 'Internal error|Unhandled fault|BUG:|WARNING:|kmemleak')"
+if [ ! -e /proc/device-tree/mychardev ]; then
+    echo "--- 10. buffer_size module parameter (no-DT mode only)"
+    insmod /lib/modules/chardev.ko buffer_size=8192 || { echo "insmod buffer_size=8192 FAILED"; exit 1; }
+    chardev_test | grep -E "capacity|ALL PASSED|FAILED"
+    rmmod chardev
+    if insmod /lib/modules/chardev.ko buffer_size=0 2>/dev/null; then
+        echo "[ FAIL ] buffer_size=0 was accepted"; rmmod chardev
+    else
+        echo "[ PASS ] buffer_size=0 rejected"
+    fi
+    if insmod /lib/modules/chardev.ko buffer_size=99999999 2>/dev/null; then
+        echo "[ FAIL ] oversized buffer_size was accepted"; rmmod chardev
+    else
+        echo "[ PASS ] buffer_size above the maximum rejected"
+    fi
+fi
 if grep -q oopsdemo /proc/cmdline; then
-    echo "--- 10. deliberate kernel oops (oops_demo.ko)"
+    echo "--- 11. deliberate kernel oops (oops_demo.ko)"
     insmod /lib/modules/oops_demo.ko
     echo "insmod exit status: $? (killed by the fault)"
     echo "kernel fault signatures in dmesg: $(dmesg | grep -cE 'Internal error|Unhandled fault|BUG:|WARNING:|kmemleak') (control: must be > 0 now)"
