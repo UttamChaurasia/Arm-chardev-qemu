@@ -380,8 +380,8 @@
 
 	chosen {
 		stdout-path = "/pl011@9000000";
-		rng-seed = <0x95ceaafa 0x636e9702 0xb72dfe8f 0x8deab159 0x69c5b3d0 0x7e5947d1 0xd557f2d3 0xb752a6ba>;
-		kaslr-seed = <0x78c96961 0x2e77a159>;
+		rng-seed = <0xc5abb955 0xdf07b5f 0x3694c207 0x217451e 0x4beabcd3 0x755a3871 0x6329cb70 0x59819da0>;
+		kaslr-seed = <0x67aa85f2 0xc58093ea>;
 	};
 	mychardev {
 		compatible = "demo,mychardev";
