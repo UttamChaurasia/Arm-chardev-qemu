@@ -17,6 +17,12 @@ mkdir -p build
 # Debug info in the prebuilt .ko embeds the path it was built in; map it to this checkout.
 BUILT_AT=/home/claude/kernel-chardev-driver-final
 
+# Breakpoint lines are looked up from markers in the source, so edits to
+# src/chardev_main.c cannot silently leave the script pointing at the wrong lines.
+BEFORE=$(grep -n 'gdb: before-copy' src/chardev_main.c | head -1 | cut -d: -f1)
+AFTER=$(grep -n 'gdb: after-copy' src/chardev_main.c | head -1 | cut -d: -f1)
+[ -n "$BEFORE" ] && [ -n "$AFTER" ] || { echo "gdb markers missing in src/chardev_main.c"; exit 1; }
+
 echo ">> step 1: reading module load addresses from the guest"
 ./scripts/run-qemu.sh gdbaddr 2>&1 | tr -d '\r' > build/addr.log
 LINE=$(grep -a MODTEXT build/addr.log)
@@ -27,6 +33,7 @@ echo "   .text=$TEXT .data=$DATA .bss=$BSS"
 
 sed -e "s|^file vmlinux|file $VMLINUX|" \
     -e "s|^# set substitute-path .*|set substitute-path $BUILT_AT $(pwd)|" \
+    -e "s|@BEFORE_COPY@|$BEFORE|" -e "s|@AFTER_COPY@|$AFTER|" \
     -e "s|^add-symbol-file .*|add-symbol-file $KO $TEXT -s .data $DATA -s .bss $BSS|" \
     scripts/mychardev.gdb > build/session.gdb
 

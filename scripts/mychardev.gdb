@@ -2,6 +2,8 @@
 # Usage (QEMU already running with `run-qemu.sh debug`):
 #   gdb-multiarch -q -x scripts/mychardev.gdb
 # or let scripts/gdb-demo.sh generate the addresses and drive everything.
+# NOTE: this file is a template (placeholders in @...@ and default addresses);
+# gdb-demo.sh writes the filled-in copy to build/session.gdb.
 #
 # Module symbols only exist after insmod, so the load addresses come from
 # /sys/module/chardev/sections/{.text,.data,.bss} inside the guest. On this
@@ -11,7 +13,7 @@ set pagination off
 set confirm off
 set architecture arm
 # debug info holds absolute build paths; remap if you moved the tree:
-# set substitute-path /home/claude/kernel-chardev-driver-final /your/path
+# set substitute-path <path the module was built in> <this checkout>
 
 file vmlinux
 target remote :1234
@@ -31,8 +33,9 @@ info args
 print/d count
 
 # ---- 2. line 87: about to copy from user space; md/len are live ----
-# (line numbers refer to src/chardev_main.c; adjust if you edit the file)
-hbreak chardev_main.c:87
+# (@BEFORE_COPY@ / @AFTER_COPY@ are filled in by gdb-demo.sh from the
+# 'gdb: before-copy' / 'gdb: after-copy' markers in src/chardev_main.c)
+hbreak chardev_main.c:@BEFORE_COPY@
 continue
 echo \n=== 2. before copy_from_user ===\n
 print md->len
@@ -40,7 +43,7 @@ print *ppos
 print md->cap
 
 # ---- 3. line 93: data copied, length updated ----
-hbreak chardev_main.c:93
+hbreak chardev_main.c:@AFTER_COPY@
 continue
 echo \n=== 3. after copy_from_user: kernel buffer now holds the user data ===\n
 print md->len

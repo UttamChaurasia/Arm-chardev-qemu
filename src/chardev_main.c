@@ -97,7 +97,7 @@ static ssize_t mychar_write(struct file *filp, const char __user *ubuf,
 	if (mutex_lock_interruptible(&md->lock))
 		return -ERESTARTSYS;
 
-	if (copy_from_user(md->buf + *ppos, ubuf, count)) {
+	if (copy_from_user(md->buf + *ppos, ubuf, count)) {	/* gdb: before-copy */
 		ret = -EFAULT;
 		goto out;
 	}
@@ -105,7 +105,7 @@ static ssize_t mychar_write(struct file *filp, const char __user *ubuf,
 	md->len = *ppos;
 	atomic64_inc(&md->writes);
 	atomic64_add(count, &md->bytes_written);
-	ret = count;
+	ret = count;	/* gdb: after-copy */
 out:
 	mutex_unlock(&md->lock);
 	return ret;
