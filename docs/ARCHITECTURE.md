@@ -10,7 +10,7 @@ How the pieces fit together, and why. File and function names refer to `src/`.
   ------------------------------------------------------------------ syscall
   kernel VFS        vfs_write -> file->f_op->write
                               |
-  char device       cdev (major 254, minor 0)  --> mychar_fops
+  char device       cdev (dynamic major, minor 0)  --> mychar_fops
                               |                     open / release / read / write /
                               |                     llseek / unlocked_ioctl
   driver            struct mychar_dev  (chardev.h)
