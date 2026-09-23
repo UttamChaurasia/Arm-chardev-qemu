@@ -22,6 +22,8 @@ and verified under QEMU (see `docs/sample-output/`).
 - [x] GDB attached to QEMU's `-s -S` stub; breakpoint hit inside the module
 - [x] Deliberate kernel oops triggered and traced back to a source line
 
+Quick start also confirmed on Ubuntu 26.04 under WSL2 (see `docs/WSL.md`).
+
 Built and verified with: Ubuntu 24.04 host, `arm-linux-gnueabi-gcc` 13, QEMU 8.2.2,
 Linux 6.6 (`virt` machine, Cortex-A15, Thumb-2 kernel), BusyBox 1.36.1, GDB 15.
 
@@ -80,6 +82,8 @@ The repository holds source only. The prebuilt kernel, rootfs, DTB, modules and
 
 ```bash
 sudo apt install qemu-system-arm gdb-multiarch     # gdb only needed for debugging
+./scripts/check-env.sh                             # are the host tools installed?
+./scripts/run-tests.sh                             # run every mode and check the results
 ./scripts/run-qemu.sh autotest                     # end-to-end test, powers off at the end
 ./scripts/run-qemu.sh autotest oopsdemo            # ...plus a deliberate kernel oops
 ./scripts/run-qemu.sh nodt autotest                # stock DTB: the no-DT fallback path
@@ -165,9 +169,13 @@ dts/                          node fragment + resulting full device tree
 user/chardev_test.c           user-space test program
 rootfs/                       init, selftest.sh, gdbdemo.sh
 scripts/                      build-kernel, make-dtb, build, build-rootfs, run-qemu,
-                              gdb-demo, mychardev.gdb, trace-oops
+                              run-tests, check-env, checkpatch, gdb-demo, mychardev.gdb,
+                              paths.sh, trace-oops
 kernel/mychardev.config       minimal ARM 'virt' kernel config fragment
+docs/ARCHITECTURE.md          how the pieces fit: stack, DT probe, IRQ path, locking
 docs/DEBUGGING.md             GDB + oops walkthrough
+docs/TROUBLESHOOTING.md       problems actually hit, with fixes
+docs/WSL.md                   running on Windows with WSL2
 docs/sample-output/           captured real output (selftest, oops, GDB session)
 prebuilt/                     zImage, rootfs, DTB, modules, vmlinux.gz
 ```
