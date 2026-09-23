@@ -54,7 +54,7 @@ layouts from the module's DWARF apply to live memory.
 1. **Function entry**: the user-space `write()` is visible in the kernel call
    stack (`mychar_write <- vfs_write <- ksys_write`), with `count=10`
    (`"hello gdb\n"`).
-2. **Line 87, before `copy_from_user`**: `md->len = 0`, `*ppos = 0`, `md->cap = 4096`.
+2. **Before `copy_from_user`** (the line tagged `gdb: before-copy`): `md->len = 0`, `*ppos = 0`, `md->cap = 4096`.
 3. **After `copy_from_user`**: `md->len = 10` and `x/s md->buf` prints
    `"hello gdb\n"`. The data is sitting in the kernel `kmalloc` buffer.
 
@@ -64,10 +64,13 @@ Notes:
 - `ubuf` prints `Cannot access memory`: it is a *user-space* address, which is
   not readable through the kernel's view. Correct behaviour, and the reason
   the driver uses `copy_from_user`.
-- Breakpoint line numbers refer to `src/chardev_main.c`; if you edit the file,
-  update them in `scripts/mychardev.gdb`.
-- The compiler folded line 93 into line 95's instructions, so that stop is
-  reported at line 95.
+- The two line breakpoints are not hard-coded. The statements are tagged in
+  `src/chardev_main.c` with `gdb: before-copy` / `gdb: after-copy` comments;
+  `gdb-demo.sh` finds them with `grep`, fills them into the template
+  `scripts/mychardev.gdb` and writes the result to `build/session.gdb` (use that
+  file for manual runs). If you delete a marker, the script says so and stops.
+- The compiler may fold the "after copy" statement into a neighbouring line's
+  instructions, in which case GDB reports the stop on that later line.
 - Debug info embeds the build path. Use
   `set substitute-path <build path> <your path>` if you move the tree (the
   scripts do this for you).
