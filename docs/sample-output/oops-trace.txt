@@ -1,6 +1,6 @@
 == PC: oopsdemo_write_null+0x14 in module oops_demo
-   Line 15 of "/home/claude/kernel-chardev-driver-final/src/oops_demo.c" starts at address 0xe <oopsdemo_write_null+14> and ends at 0x16 <oopsdemo_write_null+22>.
-   0x14 is in oopsdemo_write_null (/home/claude/kernel-chardev-driver-final/src/oops_demo.c:15).
+   Line 15 of "/home/claude/arm-chardev-qemu/src/oops_demo.c" starts at address 0xe <oopsdemo_write_null+14> and ends at 0x16 <oopsdemo_write_null+22>.
+   0x14 is in oopsdemo_write_null (/home/claude/arm-chardev-qemu/src/oops_demo.c:15).
    10	static noinline void oopsdemo_write_null(void)
    11	{
    12		volatile int *p = NULL;
@@ -12,8 +12,8 @@
    18	static int __init oopsdemo_init(void)
    19	{
 == LR: oopsdemo_write_null+0xf in module oops_demo
-   Line 15 of "/home/claude/kernel-chardev-driver-final/src/oops_demo.c" starts at address 0xe <oopsdemo_write_null+14> and ends at 0x16 <oopsdemo_write_null+22>.
-   0xf is in oopsdemo_write_null (/home/claude/kernel-chardev-driver-final/src/oops_demo.c:15).
+   Line 15 of "/home/claude/arm-chardev-qemu/src/oops_demo.c" starts at address 0xe <oopsdemo_write_null+14> and ends at 0x16 <oopsdemo_write_null+22>.
+   0xf is in oopsdemo_write_null (/home/claude/arm-chardev-qemu/src/oops_demo.c:15).
    10	static noinline void oopsdemo_write_null(void)
    11	{
    12		volatile int *p = NULL;

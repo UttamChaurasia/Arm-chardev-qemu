@@ -1,0 +1,80 @@
+=== mychardev ARM/QEMU environment (Linux 6.6.0 armv7l) ===
+--- 1. Device Tree node visible to the kernel
+(no mychardev node in DT)
+--- 2. insmod
+chardev: loading out-of-tree module taints kernel.
+mychardev: init
+mychardev: no DT node found, creating 4096-byte device without IRQ
+mychardev: registered major=254 minor=0, 4096-byte buffer
+mychardev: init
+mychardev: no DT node found, creating 4096-byte device without IRQ
+mychardev: registered major=254 minor=0, 4096-byte buffer
+--- 3. platform driver bound to the DT device
+[0;0mbind[m    [1;36mmodule[m  [0;0muevent[m  [0;0munbind[m
+--- 4. device node
+crw-------    1 0        0         254,   0 Jan  1 00:00 [1;35m/dev/mychardev[m
+--- 5. shell write / read
+mychardev: open (pid 25)
+mychardev: release
+mychardev: open (pid 32)
+hello from userspace
+mychardev: release
+--- 6. C test program (fops, ioctl, IRQ)
+mychardev: open (pid 33)
+[ PASS ] open /dev/mychardev
+[ PASS ] ioctl GET_CAP
+       capacity = 4096 bytes
+[ PASS ] write 5 bytes
+[ PASS ] read back "hello"
+[ PASS ] ioctl GET_LEN == 5
+[ PASS ] read at EOF returns 0
+[ PASS ] rewrite at offset 0 shrinks length to 2
+[ PASS ] oversized write is truncated to capacity
+[ PASS ] write at end of buffer -> ENOSPC
+[ PASS ] bad user pointer -> EFAULT (no oops)
+[ PASS ] ioctl RESET empties buffer
+[ PASS ] lseek(0, SEEK_END) == stored length
+[ PASS ] lseek(-2, SEEK_END) == 3
+[ PASS ] read after SEEK_END-2 returns tail "lo"
+[ PASS ] lseek beyond capacity -> EINVAL
+[ PASS ] unknown ioctl -> ENOTTY
+[ SKIP ] no IRQ wired up (no DT node)
+[ PASS ] sysfs stats file exists
+[ PASS ] sysfs stats parses (6 fields)
+[ PASS ] stats count opens, reads and writes
+[ PASS ] stats count bytes transferred
+[ PASS ] stats irq count equals ioctl GET_IRQCNT
+mychardev: release
+== ALL PASSED (0 failures) ==
+--- 7. interrupt statistics
+           CPU0       
+opens=3 reads=3 writes=5 bytes_read=28 bytes_written=4129 irqs=0 len=0 cap=4096
+--- 8. rmmod
+mychardev: unregistered
+mychardev: exit
+rmmod OK
+(IRQ released)
+ls: /dev/mychardev: No such file or directory
+--- 9. load/unload stress (20 cycles, IRQ fired each time)
+stress OK (20 cycles)
+kernel fault signatures in dmesg: 0
+--- 10. buffer_size module parameter (no-DT mode only)
+mychardev: init
+mychardev: no DT node found, creating 8192-byte device without IRQ
+mychardev: registered major=254 minor=0, 8192-byte buffer
+mychardev: open (pid 103)
+mychardev: release
+       capacity = 8192 bytes
+[ PASS ] oversized write is truncated to capacity
+[ PASS ] lseek beyond capacity -> EINVAL
+== ALL PASSED (0 failures) ==
+mychardev: unregistered
+mychardev: exit
+mychardev: init
+mychardev: no DT node found, creating 0-byte device without IRQ
+[ PASS ] buffer_size=0 rejected
+mychardev: init
+mychardev: no DT node found, creating 99999999-byte device without IRQ
+[ PASS ] buffer_size above the maximum rejected
+=== selftest finished, powering off ===
+reboot: Power down

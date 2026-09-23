@@ -8,35 +8,35 @@ add symbol table from file "chardev.ko" at
 	.text_addr = 0xbf800000
 	.data_addr = 0xbf802000
 	.bss_addr = 0xbf802240
-Hardware assisted breakpoint 1 at 0xbf8002ec: file /home/claude/kernel-chardev-driver-final/src/chardev_main.c, line 75.
+Hardware assisted breakpoint 1 at 0xbf80046c: file /home/claude/arm-chardev-qemu/src/chardev_main.c, line 88.
 
-Breakpoint 1, mychar_write (filp=0xc093e540, ubuf=0x63cdf0 <error: Cannot access memory at address 0x63cdf0>, count=10, ppos=0xd08c5f88) at /home/claude/kernel-chardev-driver-final/src/chardev_main.c:75
-75	{
+Breakpoint 1, mychar_write (filp=0xc093e480, ubuf=0xce7df0 <error: Cannot access memory at address 0xce7df0>, count=10, ppos=0xd08c5f88) at /home/claude/arm-chardev-qemu/src/chardev_main.c:88
+88	{
 
 === 1. entry of mychar_write (called from user-space write()) ===
-#0  mychar_write (filp=0xc093e540, ubuf=0x63cdf0 <error: Cannot access memory at address 0x63cdf0>, count=10, ppos=0xd08c5f88) at /home/claude/kernel-chardev-driver-final/src/chardev_main.c:75
-#1  0xc01894e4 in vfs_write (file=file@entry=0xc093e540, buf=0x63cdf0 <error: Cannot access memory at address 0x63cdf0>, count=10, count@entry=0, pos=pos@entry=0xd08c5f88) at fs/read_write.c:582
+#0  mychar_write (filp=0xc093e480, ubuf=0xce7df0 <error: Cannot access memory at address 0xce7df0>, count=10, ppos=0xd08c5f88) at /home/claude/arm-chardev-qemu/src/chardev_main.c:88
+#1  0xc01894e4 in vfs_write (file=file@entry=0xc093e480, buf=0xce7df0 <error: Cannot access memory at address 0xce7df0>, count=10, count@entry=0, pos=pos@entry=0xd08c5f88) at fs/read_write.c:582
 #2  0xc0189756 in ksys_write (fd=<optimized out>, buf=<optimized out>, count=0) at fs/read_write.c:637
 #3  0xc0100060 in __idmap_text_end ()
 Backtrace stopped: previous frame identical to this frame (corrupt stack?)
-filp = 0xc093e540
-ubuf = 0x63cdf0 <error: Cannot access memory at address 0x63cdf0>
+filp = 0xc093e480
+ubuf = 0xce7df0 <error: Cannot access memory at address 0xce7df0>
 count = 10
 ppos = 0xd08c5f88
 $1 = 10
-Hardware assisted breakpoint 2 at 0xbf800326: file /home/claude/kernel-chardev-driver-final/src/chardev_main.c, line 87.
+Hardware assisted breakpoint 2 at 0xbf8004a8: file /home/claude/arm-chardev-qemu/src/chardev_main.c, line 100.
 
-Breakpoint 2, mychar_write (filp=<optimized out>, ubuf=0x63cdf0 <error: Cannot access memory at address 0x63cdf0>, count=<optimized out>, ppos=0xd08c5f88) at /home/claude/kernel-chardev-driver-final/src/chardev_main.c:87
-87		if (copy_from_user(md->buf + *ppos, ubuf, count)) {
+Breakpoint 2, mychar_write (filp=<optimized out>, ubuf=0xce7df0 <error: Cannot access memory at address 0xce7df0>, count=<optimized out>, ppos=0xd08c5f88) at /home/claude/arm-chardev-qemu/src/chardev_main.c:100
+100		if (copy_from_user(md->buf + *ppos, ubuf, count)) {	/* gdb: before-copy */
 
 === 2. before copy_from_user ===
 $2 = 0
 $3 = 0
 $4 = 4096
-Hardware assisted breakpoint 3 at 0xbf800352: file /home/claude/kernel-chardev-driver-final/src/chardev_main.c, line 93.
+Hardware assisted breakpoint 3 at 0xbf800524: file /home/claude/arm-chardev-qemu/src/chardev_main.c, line 108.
 
-Breakpoint 3, mychar_write (filp=<optimized out>, ubuf=0x63cdf0 <error: Cannot access memory at address 0x63cdf0>, count=<optimized out>, ppos=0xd08c5f88) at /home/claude/kernel-chardev-driver-final/src/chardev_main.c:95
-95		mutex_unlock(&md->lock);
+Breakpoint 3, mychar_write (filp=<optimized out>, ubuf=<optimized out>, count=<optimized out>, ppos=0xd08c5f88) at /home/claude/arm-chardev-qemu/src/chardev_main.c:110
+110		mutex_unlock(&md->lock);
 
 === 3. after copy_from_user: kernel buffer now holds the user data ===
 $5 = 10
