@@ -148,7 +148,8 @@ platform driver bound in sysfs, the handler listed in `/proc/interrupts`, IRQ
 released on `rmmod`, and a 20-cycle load/unload stress loop (interrupt fired
 each cycle) that must leave no oops/BUG/WARNING in `dmesg`. In no-DT boots it also checks
 the `buffer_size` parameter and its rejections. `scripts/run-tests.sh` runs every
-mode and asserts 23 expectations, including that the fault detector fires on the
+mode and asserts 22 expectations (23 when a kernel tree is available for checkpatch),
+including that the fault detector fires on the
 deliberate oops.
 
 **Debugging** — see `docs/DEBUGGING.md` for the GDB session and how to read
