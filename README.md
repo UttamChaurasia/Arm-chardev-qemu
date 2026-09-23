@@ -25,6 +25,17 @@ and verified under QEMU (see `docs/sample-output/`).
 Built and verified with: Ubuntu 24.04 host, `arm-linux-gnueabi-gcc` 13, QEMU 8.2.2,
 Linux 6.6 (`virt` machine, Cortex-A15, Thumb-2 kernel), BusyBox 1.36.1, GDB 15.
 
+## Beyond the checklist
+
+Added after the ten items above, each with its own test:
+
+- **`llseek`** with `SEEK_END` relative to the stored length (bounded by the capacity).
+- **`buffer_size` module parameter** for the no-DT path (invalid values are rejected at `insmod`).
+- **sysfs `stats` attribute** (`/sys/class/mychardev/mychardev/stats`): opens, reads,
+  writes, bytes, interrupts, length and capacity, cross-checked against what user space did.
+- **Regression runner** (`scripts/run-tests.sh`), **kernel style check**
+  (`scripts/checkpatch.sh`) and a **host environment checker** (`scripts/check-env.sh`).
+
 ## Skills demonstrated
 
 | Area | How |
@@ -126,11 +137,15 @@ the handler and the software trigger (`irq_set_irqchip_state(..., PENDING, true)
 `mychardev { compatible = "demo,mychardev"; interrupts = <0 60 1>; }` (SPI 60,
 unused on virt) and recompiles. `virt-mychardev.generated.dts` is the result.
 
-**Tests.** `user/chardev_test.c` runs 12 file/ioctl/error checks plus 2 interrupt
-checks. `rootfs/selftest.sh` adds: DT node visible under `/proc/device-tree`,
+**Tests.** `user/chardev_test.c` runs 23 checks (file operations, ioctl and error paths,
+`lseek`, the sysfs statistics, and 2 interrupt checks that are skipped when there is no
+DT node, leaving 21). `rootfs/selftest.sh` adds: DT node visible under `/proc/device-tree`,
 platform driver bound in sysfs, the handler listed in `/proc/interrupts`, IRQ
 released on `rmmod`, and a 20-cycle load/unload stress loop (interrupt fired
-each cycle) that must leave no oops/BUG/WARNING in `dmesg`.
+each cycle) that must leave no oops/BUG/WARNING in `dmesg`. In no-DT boots it also checks
+the `buffer_size` parameter and its rejections. `scripts/run-tests.sh` runs every
+mode and asserts 23 expectations, including that the fault detector fires on the
+deliberate oops.
 
 **Debugging** — see `docs/DEBUGGING.md` for the GDB session and how to read
 the oops, including the pitfalls found along the way (Thumb-2 addresses,
